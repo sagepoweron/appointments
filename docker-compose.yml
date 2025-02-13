@@ -1,0 +1,25 @@
+services:
+  appointments.server:
+    container_name: appointments_server
+    build:
+      context: .
+      dockerfile: Appointments.API/Data/Dockerfile
+    ports:
+      - "1433:1433"
+    restart: unless-stopped
+
+  appointments.api:
+    container_name: appointments_api
+    build:
+      context: .
+      dockerfile: Appointments.API/Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - appointments.server
+
+  # appointments.api:
+  #   image: ${DOCKER_REGISTRY-}appointmentsapi
+  #   build:
+  #     context: .
+  #     dockerfile: Appointments.API/Dockerfile

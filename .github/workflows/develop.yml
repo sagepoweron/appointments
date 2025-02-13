@@ -1,0 +1,55 @@
+name: Workflow Pipeline
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+      - name: Install dependencies
+        run: pip install safety pip-audit
+      - name: Scan for vulnerabilities
+        run: safety check
+      - name: Run Dependency Analysis
+        run: pip-audit || true
+      - name: Generate Trivy Vulnerability Report
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          output: trivy-report.json
+          format: json
+          scan-ref: .
+          exit-code: 0
+
+  build-and-push:
+    needs: security
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push database
+        uses: docker/build-push-action@v6
+        with:
+          file: ./Appointments.API/Data/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/appointments-server:develop
+
+      - name: Build and push api
+        uses: docker/build-push-action@v6
+        with:
+          file: ./Appointments.API/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/appointments-api:develop
